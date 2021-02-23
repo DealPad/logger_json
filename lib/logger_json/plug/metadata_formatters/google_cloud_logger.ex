@@ -24,6 +24,7 @@ if Code.ensure_loaded?(Plug) do
       user_agent = LoggerJSON.Plug.get_header(conn, "user-agent")
       remote_ip = remote_ip(conn)
       referer = LoggerJSON.Plug.get_header(conn, "referer")
+      {trace, span_id} = cloud_trace_context(conn)
       {hostname, vm_pid} = node_metadata()
 
       client_metadata(conn, client_version_header) ++
@@ -40,7 +41,9 @@ if Code.ensure_loaded?(Plug) do
               referer: referer,
               latency: latency_seconds
             ),
-          node: json_map(hostname: to_string(hostname), vm_pid: vm_pid)
+          node: json_map(hostname: to_string(hostname), vm_pid: vm_pid),
+          trace: trace,
+          span_id: span_id
         ]
     end
 
@@ -86,6 +89,21 @@ if Code.ensure_loaded?(Plug) do
         end
 
       {hostname, vm_pid}
+    end
+
+    # Description can be found in Google Cloud Logger docs;
+    # https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#FIELDS.trace
+    # https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#FIELDS.span_id
+    defp cloud_trace_context(conn) do
+      with context when not is_nil(context) <- LoggerJSON.Plug.get_header(conn, "x-cloud-trace-context"),
+           [trace, span_id | _] <- String.split(context, ~r/[\/;]/),
+           {:ok, project} <- System.fetch_env("GOOGLE_CLOUD_PROJECT")
+        do
+        {"projects/#{project}/traces/#{trace}", span_id}
+        else
+          _error ->
+            {nil, nil}
+      end
     end
   end
 end

@@ -55,6 +55,8 @@ defmodule LoggerJSON.Formatters.GoogleCloudLogger do
     |> FormatterUtils.maybe_put(:error, FormatterUtils.format_process_crash(md))
     |> FormatterUtils.maybe_put(:"logging.googleapis.com/sourceLocation", format_source_location(md))
     |> FormatterUtils.maybe_put(:"logging.googleapis.com/operation", format_operation(md))
+    |> FormatterUtils.maybe_put(:"logging.googleapis.com/trace", format_trace(md))
+    |> FormatterUtils.maybe_put(:"logging.googleapis.com/span", format_span(md))
   end
 
   defp format_operation(md) do
@@ -76,5 +78,17 @@ defmodule LoggerJSON.Formatters.GoogleCloudLogger do
       line: line,
       function: FormatterUtils.format_function(module, function)
     )
+  end
+
+  # Description can be found in Google Cloud Logger docs;
+  # https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#FIELDS.trace
+  defp format_trace(metadata) do
+    Keyword.get(metadata, :trace)
+  end
+
+  # Description can be found in Google Cloud Logger docs;
+  # https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#FIELDS.span_id
+  defp format_span(metadata) do
+    Keyword.get(metadata, :span_id)
   end
 end
